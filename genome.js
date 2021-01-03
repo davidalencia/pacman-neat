@@ -21,8 +21,8 @@ class Genome {
     return outN.addConnection(inN, weight)
   }
 
-  _addNeuron(type, nN=this.neurons.length){
-    const n = new Neuron(nN, type)
+  _addNeuron(type, nN=this.neurons.length, layer){
+    const n = new Neuron(nN, type, layer)
     this.neurons[n.id] = n
     if(type == Neuron.Type.input){
       this.inputs.push(n)
@@ -136,7 +136,7 @@ class Genome {
 
     function addNeuron(n){
       if(!(n.id in addedNeurons))
-        addedNeurons[n.id]  = child._addNeuron(n.type, n.id)
+        addedNeurons[n.id]  = child._addNeuron(n.type, n.id, n.layer)
       return addedNeurons[n.id]
     }
 
@@ -180,9 +180,9 @@ class Genome {
 
   static offSpring(mother, father){
     const child = Genome.unmutedChild(mother, father)
-    //child.mutateWeights(0.5)
+    child.mutateWeights(0.5)
     child.mutateConnections(0.4)
-    //child.mutateNewConnections(1)
+    child.mutateNewConnections(0.5)
     return child
   }
 }
