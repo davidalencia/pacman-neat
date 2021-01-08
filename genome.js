@@ -2,7 +2,7 @@ const sigmoid = x=>1/(1+Math.exp(x))
 
 class Genome {
   constructor(inputs, outputs, bias=true){
-    this.error = null
+    this.fitness = null
     this.neurons = []
     this.inputs = []
     this.hidden = []
@@ -63,6 +63,13 @@ class Genome {
     return Y
   }
 
+  feedBatch(batch){
+    let Y = []
+    for(const input of batch)
+      Y.push(this.feed(input))
+    return Y
+  }
+
   connectionIterator(){
     let connections = []
     for(const n of this.neurons)
@@ -113,17 +120,14 @@ class Genome {
         continue
       const alreadyConnected = new Set()
       n.connections.forEach(x=>alreadyConnected.add(x.inN.id))
-      const posibleOuts = this.neurons.filter(x=>{
+      const posibleInputs = this.neurons.filter(x=>{
         return x.layer < n.layer
       }).filter(x =>{
         return !alreadyConnected.has(x.id)
       })
-      //console.log(n.id);
-      //console.log(posibleOuts);
-      /*Posible outs listo
-        elegimos un ix de los posibles
-        y creamos una coneccion con un peso aleatorio
-      */
+      if(Math.random()<radioactivity && posibleInputs.length>0){
+        this._addConnection(random(posibleInputs), n)
+      }
     }
 
   }
