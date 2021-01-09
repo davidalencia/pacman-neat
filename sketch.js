@@ -1,15 +1,17 @@
-X = [
+const X = [
   [0,0],
   [0,1],
   [1,0],
   [1,1]
 ]
-Y = [
+const Y = [
   [0],
   [1],
   [1],
   [0]
 ]
+let pacman = null
+let tileset = null
 
 function fitness(n, X, Y){
   function mse(y, yP){
@@ -22,7 +24,33 @@ function fitness(n, X, Y){
   return  1/mse(Y, n.feedBatch(X))
 }
 
+function preload(){
+  tileset = loadImage('pacman/tileset.png');
+}
+
+function keyTyped(){
+  if(key == 'w')
+    pacman.setDirection('U')
+  else if(key == 'a')
+    pacman.setDirection('L')
+  else if(key == 's')
+    pacman.setDirection('D')
+  else if(key == 'd')
+    pacman.setDirection('R') 
+}
+
 function setup(){
+  //Paman setup
+  frameRate(3)
+  createCanvas(336, 432);
+  pacman = new Pacman(tileset)
+  pacman.newLevel(0)
+
+  //Neat setup
   let neat = new NEAT(2,1,30)
   neat.step(fitness, X, Y)
+}
+
+function draw() {
+  pacman.draw() 
 }

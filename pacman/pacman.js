@@ -142,11 +142,15 @@ class Pacman {
       this.score++
     }
   }
-  
-  draw(){
+
+  update(){
     if(this.uneatenPoints==0)
       this.newLevel()
     this.move()
+  }
+  
+  draw(){
+    this.update()
     this.drawMaze()
     this.drawPoints()
     this.drawPacman()
