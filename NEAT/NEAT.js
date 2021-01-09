@@ -10,18 +10,8 @@ class NEAT {
   }
 
   /**
-   * Dado un especimen regresa el indice de la primera especie con la
-   * que su delta es menor a epsilon. Se toma un ejemplar arbitrario
-   * por especie para comparar. En caso de no encajar en ninguna especie
-   * se regresara el siguiente indice en la lista
-   * @param {Genome} especimen Ejemplar a comparar.
-   * @return {Number} Indice de la especie correspondiente.
-   */
-  findSpecie(){
-
-  }
-
-  /**
+   * Como en verano las especies crecen, se alimentan y son probadas contra
+   * el ambiente.
    * Calcula el fitness de la poblaci\'on
    * @param {Array} X - Arreglo de entradas a evaluar por las redes 
    * neuronales.
@@ -38,17 +28,53 @@ class NEAT {
   }
 
   /**
+   * Conforme el otoño llega, las especies envejecen y es posible separarlas 
+   * en distintos tipos.
    * Separamos a toda nuestra poblaci\'on en distintas especies
    */
   autumn() {
-    let oldSpecies = this.species
-    this.species = []
-    for(const genome of this.population){
-      // encuentra un set 
+    this.species = [new Specie(this.population[0])]
+    for(let i=1; i<this.population.length; i++){
+      let hasSpecie = false
+      let j = 0
+      while(!hasSpecie && j<this.species.length){
+        hasSpecie = this.species[j++].addGenome(this.population[i])
+      }
+      if(!hasSpecie)
+        this.species.push(new Specie(this.population[i]))
     }
   }
-  winter() { }
-  spring() { }
+
+  /**
+   * Como en invierno, los especimenes mas debiles de cada especie mueren.
+   * Es decir eliminaremos a los elementos con peor fitness de cada especie.
+   */
+  winter() { 
+    for(const specie of this.species){
+      specie.specimens.sort((a,b)=>b.fitness-a.fitness)
+      if(specie.specimens.length>2){
+        let newLen = Math.floor(specie.specimens.length*0.7)
+        specie.specimens.length = newLen
+      }
+    }
+
+  }
+
+  /**
+   * En primavera las especimenes que sobrevivieron el invierno, estan al 
+   * final de su vida y buscan con quien reproducirse.
+   * Reproducimos a cada especie y substituimos a nuestra población.
+   */
+  spring() {
+    this.population = []
+    for(const specie of this.species){
+      for(let i =0; i<specie.length; i++){
+        let mother =  random(specie.specimens)
+        let father = random(specie.specimens)
+        this.population.push(Genome.offSpring(mother, father))
+      }
+    }
+  }
 
   step(fitness, X, Y) {
     if (fitness)
@@ -56,16 +82,6 @@ class NEAT {
     this.autumn()
     this.winter()
     this.spring()
-
-    //Oto\~no 
-    //separar en especies (sets)
-
-    //Invierno 
-    //Asesinar a los debiles
-
-    // Primavera
-    // Reproducir aleatoriamente dentro de la misma especie 
-
 
     this.population.sort((a, b) => b.fitness - a.fitness)
     console.log(this.population);

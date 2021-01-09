@@ -48,7 +48,10 @@ function setup(){
 
   //Neat setup
   let neat = new NEAT(2,1,30)
-  neat.step(fitness, X, Y)
+  for(let i=0; i<100; i++)
+    neat.step(fitness, X, Y)
+  console.log(neat.population[0].feedBatch(X))
+  console.log(Y); 
 }
 
 function draw() {

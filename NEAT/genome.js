@@ -43,10 +43,11 @@ class Genome {
   _feed(nN, neurons){
     if(neurons[nN] != Infinity)
       return neurons[nN]
-    neurons[nN] = sigmoid(
-      this.neurons[nN].connections.reduce((acc, cCon)=>{
-        return acc + this._feed(cCon.inN.id, neurons)*cCon.weight
-    }, 0))
+
+    let acc = 0
+    for(const cCon of this.neurons[nN].connections)
+      acc += this._feed(cCon.inN.id, neurons)*cCon.weight
+    neurons[nN] = sigmoid(acc)
     return neurons[nN]
   }
 
