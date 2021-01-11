@@ -2,207 +2,70 @@ const sigmoid = x=>1/(1+Math.exp(x))
 
 class Genome {
   constructor(inputs, outputs, bias=true){
-    this.fitness = null
-    this.neurons = []
-    this.inputs = []
-    this.hidden = []
-    this.outputs = []
-    this.calculated = []
+    inputs = inputs +1
+    this.inputLen = inputs
+    this.outputLen = outputs
+    this.dGraph = new dGraph()
+    for(let i=0; i<inputs; i++)
+      for(let j=0; j<outputs; j++)
+        this.dGraph.addEdge(i, inputs+j)
 
-    for(let i=0; i<inputs+bias; i++)
-      this._addNeuron(Neuron.Type.input)
-    for(let i=0; i<outputs; i++){
-      let n = this._addNeuron(Neuron.Type.output)
-      for(const inN of this.inputs)
-        this._addConnection(inN, n)
-    }    
   }
-  _addConnection(inN, outN, weight=Math.random()){
-    return outN.addConnection(inN, weight)
-  }
-
-  _addNeuron(type, nN=this.neurons.length, layer){
-    const n = new Neuron(nN, type, layer)
-    this.neurons[n.id] = n
-    if(type == Neuron.Type.input){
-      this.inputs.push(n)
-      n.layer = 0
-    }
-    else if(type == Neuron.Type.hidden){
-      this.hidden.push(n)
-      this.calculated.push(n)
-    }
-    else {
-      this.outputs.push(n)
-      this.calculated.push(n)
-      n.layer = Infinity
-    }
-    return n
-  }
-
-  _feed(nN, neurons){
-    if(neurons[nN] != Infinity)
-      return neurons[nN]
-
-    let acc = 0
-    for(const cCon of this.neurons[nN].connections)
-      acc += this._feed(cCon.inN.id, neurons)*cCon.weight
-
-    neurons[nN] = sigmoid(acc)
-    return neurons[nN]
+  
+  _feed(neurons, v){
+    if(neurons[v.id]!=Infinity)
+      return neurons[v.id]
+    let sum = 0
+    for(const edge of v.inEdges)
+      sum += this._feed(neurons, edge.outV)*edge.weight
+    console.log(sum);
+    neurons[v.id] = sigmoid(sum)
+    return neurons[v.id]
   }
 
   feed(input){
-    const neurons = new Float32Array(this.neurons.length)
-    neurons.fill(Infinity)
-    neurons[0] = 1
-    for(let i=0; i<this.inputs.length-1; i++)
-      neurons[i+1]=input[i]
-    for(let i=0; i<this.neurons.length; i++)
-      this._feed(this.neurons[i].id, neurons)
-    const Y = new Array(this.outputs.length)
-    for(let i=0; i<this.outputs.length; i++){
-      Y[i] = this._feed(this.outputs[i].id, neurons)
-    }
+    const neuronsValues = new Float32Array(this.dGraph.vertex.length).fill(Infinity)
+    const orderedVertex = this.dGraph.toposort()
+    input.unshift(1)
+    if(input.length!=this.inputLen)
+      throw Error("input must be same as size as defined in constructor")
+    for(let i=0; i<this.inputLen; i++)
+      neuronsValues[i] = input[i]
+    for(const vertex of orderedVertex)
+      this._feed(neuronsValues, vertex)
+    let Y = new Float32Array(this.outputLen)
+    for(let i=0; i<this.outputLen; i++)
+      Y[i] = neuronsValues[this.inputLen+i]
     return Y
   }
 
   feedBatch(batch){
-    let Y = []
-    for(const input of batch)
-      Y.push(this.feed(input))
-    return Y
+
   }
 
-  connectionIterator(){
-    let connections = []
-    for(const n of this.neurons)
-      for(const conn of n.connections)
-        connections.push(conn)
-    connections.sort((a, b)=>a.innovn-b.innovN)
-    let i = 0
-    return {
-      next: function(){
-        return i<connections.length? 
-          {value: connections[i++], done: false}:
-          {done: true}
-      },
-      done: function(){
-        return i>=connections.length
-      }
-    }
-  }
 
   mutateWeights(radioactivity){
-    const it = this.connectionIterator()
-    while(!it.done())
-      if(Math.random()<radioactivity)
-        it.next().value.weight += randomGaussian(0, 0.25)
-      else 
-        it.next()
+
   }
 
   mutateConnections(radioactivity){
-    const it = this.connectionIterator()
-    while(!it.done())
-      if(Math.random()<radioactivity){
-        const originalConn =  it.next().value
-        const n = this._addNeuron(Neuron.Type.hidden)
-        n.layer = originalConn.inN.layer + 1
-        if(originalConn.outN.type == Neuron.Type.hidden)
-          originalConn.outN.layer = n.layer+1
-        this._addConnection(originalConn.inN, n, 1)
-        originalConn.inN = n
-      }
-      else 
-        it.next()
+
   }
 
   mutateNewConnections(radioactivity){
-    for(const n of this.neurons){
-      if(n.type == Neuron.Type.input || Math.random()>radioactivity)
-        continue
-      const alreadyConnected = new Set()
-      n.connections.forEach(x=>alreadyConnected.add(x.inN.id))
-      const posibleInputs = this.neurons.filter(x=>{
-        return x.layer < n.layer
-      }).filter(x =>{
-        return !alreadyConnected.has(x.id)
-      })
-      if(Math.random()<radioactivity && posibleInputs.length>0){
-        this._addConnection(random(posibleInputs), n)
-      }
-    }
 
-  }
-
-  /**
-   * Eliminamos los ciclos que pudieron ser generados por las mutaciones.
-   */
-  eliminateCicles(){
-    for(const neuron of this.neurons){
-      neuron.connections = neuron.connections.filter(con=>{
-        return con.inN.layer < con.outN.layer
-      })
-    }
   }
 
   static unmutedChild(mother, father){
-    const child = new Genome(0, 0, false)
-    const motherIt = mother.connectionIterator()
-    const fatherIt = father.connectionIterator()
-    const addedNeurons = {}
-
-    function addNeuron(n){
-      if(!(n.id in addedNeurons))
-        addedNeurons[n.id]  = child._addNeuron(n.type, n.id, n.layer)
-      return addedNeurons[n.id]
-    }
-
-    function addConnection(conn){      
-      child._addConnection(addNeuron(conn.inN), addNeuron(conn.outN), conn.weight)
-    }
-
-    let mConn = motherIt.next()
-    let fConn = fatherIt.next()
-    while(!mConn.done && !fConn.done){
-      if(mConn.value.innovN == fConn.value.innovN){
-        if(Math.random>0.5){
-          addConnection(mConn.value)
-        }
-        else {
-          addConnection(fConn.value)
-        }
-        mConn = motherIt.next()
-        fConn = fatherIt.next()
-      }
-      else if(mConn.value.innovN<fConn.value.innovN){
-        addConnection(mConn.value)
-        mConn = motherIt.next()
-      }
-      else {
-        addConnection(fConn.value)
-        fConn = fatherIt.next()
-      }
-    }
-    while(!mConn.done){
-      addConnection(mConn.value)
-      mConn = motherIt.next()
-    }
-    while(!fConn.done){
-      addConnection(fConn.value)
-      fConn = fatherIt.next()
-    }
-    return child
+   
   }
 
   static offSpring(mother, father){
-    const child = Genome.unmutedChild(mother, father)
-    child.mutateWeights(0.5)
-    child.mutateConnections(0.5)
-    child.mutateNewConnections(0.5)
-    child.eliminateCicles()
-    return child
+
   }
 }
 
+let g = new Genome(2, 1)
+
+console.log(g);
+console.log(g.feed([0,1]));
