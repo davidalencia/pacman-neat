@@ -47,6 +47,7 @@ class Genome {
     let acc = 0
     for(const cCon of this.neurons[nN].connections)
       acc += this._feed(cCon.inN.id, neurons)*cCon.weight
+
     neurons[nN] = sigmoid(acc)
     return neurons[nN]
   }
@@ -57,6 +58,8 @@ class Genome {
     neurons[0] = 1
     for(let i=0; i<this.inputs.length-1; i++)
       neurons[i+1]=input[i]
+    for(let i=0; i<this.neurons.length; i++)
+      this._feed(this.neurons[i].id, neurons)
     const Y = new Array(this.outputs.length)
     for(let i=0; i<this.outputs.length; i++){
       Y[i] = this._feed(this.outputs[i].id, neurons)
@@ -133,6 +136,17 @@ class Genome {
 
   }
 
+  /**
+   * Eliminamos los ciclos que pudieron ser generados por las mutaciones.
+   */
+  eliminateCicles(){
+    for(const neuron of this.neurons){
+      neuron.connections = neuron.connections.filter(con=>{
+        return con.inN.layer < con.outN.layer
+      })
+    }
+  }
+
   static unmutedChild(mother, father){
     const child = new Genome(0, 0, false)
     const motherIt = mother.connectionIterator()
@@ -179,15 +193,15 @@ class Genome {
       addConnection(fConn.value)
       fConn = fatherIt.next()
     }
-
     return child
   }
 
   static offSpring(mother, father){
     const child = Genome.unmutedChild(mother, father)
     child.mutateWeights(0.5)
-    child.mutateConnections(0.4)
+    child.mutateConnections(0.5)
     child.mutateNewConnections(0.5)
+    child.eliminateCicles()
     return child
   }
 }
