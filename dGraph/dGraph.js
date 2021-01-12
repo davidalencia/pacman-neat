@@ -22,7 +22,7 @@ class Edge {
    * @param {Number} inV Vertice donde entra la arista
    * @param {Number} weight Peso de la arista. Default: Math.random()
    */
-  constructor(inV, outV, weight){
+  constructor(outV, inV, weight){
     this.outV = outV
     this.inV = inV
     this.weight =  weight
@@ -42,13 +42,15 @@ class dGraph {
   constructor(){
     this.edges = []
     this.vertex = []
-    this.isOrdered = true
+    this.vertexIds =  new Set()
+    this.ordered = null
   }
   _createOrGetVertex(id){
     if(!this.vertex[id]){
       this.vertex[id] = new Vertex(id)
       this.isOrdered = false
     }
+    this.vertexIds.add(id)
     return this.vertex[id]
   }
 
@@ -59,10 +61,10 @@ class dGraph {
    * @param {Number} weight Peso de la arista. Default: Math.random()
    */
   addEdge(outV, inV, weight=Math.random()){
-    this.isOrdered = false
+    this.ordered = null
     outV = this._createOrGetVertex(outV)
     inV = this._createOrGetVertex(inV)
-    const edge = new Edge(inV, outV, weight)
+    const edge = new Edge(outV, inV, weight)
     this.edges.push(edge)
     inV.inEdges.push(edge)
     outV.outEdges.push(edge)
@@ -73,7 +75,7 @@ class dGraph {
    * @param {Edge} e Arista que se desea elimiar
    */
   deleteEdge(e){
-    this.isOrdered = false
+    this.ordered = null
     function _deleteEdge(e, arr) {
       let filtered = []
       for(const edge of arr)
@@ -86,15 +88,28 @@ class dGraph {
   }
 
   /**
+   * Devuelve un vértice nuevo dentro de la gráfica.
+   */
+  createVertex(){
+    this.ordered = null
+    let id =  this.vertex.length
+    while(this.vertexIds.has(id))
+      id++
+    this.vertex[id] = new Vertex(id)
+    this.vertexIds.add(id)
+    return this.vertex[id]
+  }
+
+  /**
    * Regresa un arreglo de los vertices ordenados por topo sort
    * @returns {[Vertex]} Arreglo de vertices.
    */
   toposort(){
-    if(this.isOrdered)
-      return this.vertex
+    if(this.ordered)
+      return this.ordered
     const dfs = (at, V, visitedNodes) => {
       V[at] = true
-      for(const edge of this.vertex[at].outEdges)
+      for(const edge of this.vertex[at].inEdges)
         if(!V[edge.outV.id])
           dfs(edge.outV.id, V, visitedNodes)
       visitedNodes.push(at)
@@ -114,8 +129,18 @@ class dGraph {
         }
       }
     } 
-    this.vertex = ordering.reverse().map(x=>this.vertex[x])
-    return this.vertex
+    this.ordered = ordering.reverse().map(x=>this.vertex[x])
+    return this.ordered
+  }
+
+  /**
+   * Método para convertir a cadena la gráfica.
+   */
+  toString(){
+    let s = ""
+    for(const edge of this.edges)
+      s += edge.outV.id +"->"+ edge.inV.id + "\n"
+    return s
   }
 
 }
