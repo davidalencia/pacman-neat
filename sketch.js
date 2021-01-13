@@ -47,11 +47,14 @@ function setup(){
   pacman.newLevel(0)
 
   //Neat setup
-  //let neat = new NEAT(2,1,30)
-  // for(let i=0; i<6; i++)
-  //   neat.step(fitness, X, Y)
-  // console.log(neat.population[0].feedBatch(X))
-  // console.log(Y); 
+  let neat = new NEAT(2,1,30)
+  for(let i=0; i<100; i++){
+    neat.step(fitness, X, Y)
+    console.log(neat.population[0].fitness);
+  }
+  console.log(neat.population[0]);
+  console.log(neat.population[0].feedBatch(X))
+  console.log(Y); 
 }
 
 function draw() {

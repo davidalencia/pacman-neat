@@ -10,6 +10,7 @@ function randGaussian(mu, sigma) {
 class Genome {
   constructor(inputs, outputs, bias=true){
     inputs = inputs +1
+    this.fitness = null
     this.inputLen = inputs
     this.outputLen = outputs
     this.dGraph = new dGraph()
@@ -32,9 +33,11 @@ class Genome {
   feed(input){
     const neuronsValues = new Float32Array(this.dGraph.vertex.length).fill(Infinity)
     const orderedVertex = this.dGraph.toposort()
-    input.unshift(1)
-    if(input.length!=this.inputLen)
+    input.unshift(1) 
+    if(input.length!=this.inputLen){
+      console.log(input);
       throw Error("input must be same as size as defined in constructor")
+    }
     for(let i=0; i<this.inputLen; i++)
       neuronsValues[i] = input[i]
     for(const vertex of orderedVertex)
@@ -47,7 +50,10 @@ class Genome {
 
   feedBatch(batch){
     let Y = []
-    for(const input of batch)
+    let newBatch = new Array()
+    for(let i=0; i<batch.length; i++)
+      newBatch[i] = batch[i].slice()
+    for(const input of newBatch)
       Y.push(this.feed(input))
     return Y
   }
@@ -55,10 +61,11 @@ class Genome {
 
   mutateWeights(radioactivity){
     const orderedVertex = this.dGraph.toposort()
-    for(const vertex of orderedVertex)
-      for(edge of vertex.outEdges)
+    for(const vertex of orderedVertex){
+      for(const edge of vertex.outEdges)
         if(Math.random()<radioactivity)
           edge.weight += randGaussian(0, 0.25) -1
+    }
   }
 
   mutateConnections(radioactivity){
@@ -94,15 +101,16 @@ class Genome {
       }
   }
 
+  connections() {
+    const edges = []
+    for(const vertex of this.dGraph.toposort())
+      for(const edge of vertex.outEdges)
+        edges.push(edge)
+    edges.sort((a,b)=>a.innovN-b.innovN)
+    return edges
+  }
+
   static unmutedChild(mother, father){
-    function connections(genome) {
-      const edges = []
-      for(const vertex of genome.dGraph.toposort())
-        for(const edge of vertex.outEdges)
-          edges.push(edge)
-      edges.sort((a,b)=>a.innovN-b.innovN)
-      return edges
-    }
     function checkOrder(sort, a, b) {
       let aix = -1
       let bix = -1
@@ -116,8 +124,8 @@ class Genome {
     }
     let child = new Genome(mother.inputLen-1, mother.outputLen)
     child.dGraph = new dGraph()
-    let mEdges = connections(mother)
-    let fEdges = connections(father)
+    let mEdges = mother.connections()
+    let fEdges = father.connections()
     let mVertex = mother.dGraph.toposort()
     let fVertex = mother.dGraph.toposort()
     let toposort;
@@ -165,21 +173,10 @@ class Genome {
   }
 
   static offSpring(mother, father){
-
+    let child = Genome.unmutedChild(mother, father)
+    child.mutateWeights(0.2)
+    child.mutateNewConnections(0.05)
+    child.mutateConnections(0.01)
+    return child
   }
 }
-
-let f = new Genome(2, 1)
-f.mutateConnections(1)
-f.mutateNewConnections(1)
-console.log(f);
-console.log(f.dGraph.toString());
-// let m = new Genome(2, 1)
-// m.mutateConnections(1)
-// m.mutateNewConnections(0.5)
-// console.log(f.dGraph.toString());
-// console.log("...................");
-// console.log(m.dGraph.toString());
-// console.log(".......................");
-
-// console.log(Genome.unmutedChild(m, f).dGraph.toString());

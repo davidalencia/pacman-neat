@@ -40,45 +40,37 @@ class Specie {
      */
     is(genome, c1=2, c2=2, c3=1){
         let E = 0,
-            Nbase = 0,
-            Ngen = 0,
             D = 0,
             W = 0;
-        let basicGenome = random(this.specimens)
-        let baseIt = basicGenome.connectionIterator()
-        let it =genome.connectionIterator()
-        let baseCon = baseIt.next()
-        let con =  it.next()
-        while(!baseCon.done && !con.done){
-            if(baseCon.value.innovN == con.value.innovN){
-                Nbase++
-                Ngen++
-                W += Math.abs(baseCon.value.weight - con.value.weight)
-                baseCon = baseIt.next()
-                con =  it.next()
+        let specimen = random(this.specimens)
+        let sConnections = specimen.connections()
+        let gConnections = genome.connections()
+        let six = 0
+        let gix = 0 
+        while(six<sConnections.length && gix<gConnections.length){
+            if(sConnections[six].innovN == gConnections[gix].innovN){
+                W += Math.abs(sConnections[six].weight - gConnections[gix].weight)
+                six++
+                gix++
             }
-            else  if(baseCon.value.innovN < con.value.innovN){
+            else  if(sConnections[six].innovN < gConnections[gix].innovN){
                 D++
-                Nbase++
-                baseCon = baseIt.next()
+                six++
             }
             else {
                 D++
-                Ngen++
-                con = it.next()
+                gix++
             }
         }
-        while(!baseCon.done){
+        while(six<sConnections.length){
             E++
-            Nbase++
-            baseCon = baseIt.next()
+            six++
         }
-        while(!baseCon.done){
+        while(gix<gConnections.length){
             E++
-            Ngen++
-            con = it.next()
+            gix++
         }
-        let N = Math.max(Ngen, Nbase)
+        let N = Math.max(gix, six)
         W = W/N 
         N = N>20? N : 1
         let distance = (c1*E + c2*D)/N + W*c3

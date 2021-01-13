@@ -32,8 +32,8 @@ class NEAT {
    * en distintos tipos.
    * Separamos a toda nuestra poblaci\'on en distintas especies
    */
-  autumn() {
-    this.species = [new Specie(this.population[0])]
+  autumn(delta) {
+    this.species = [new Specie(this.population[0], delta)]
     for(let i=1; i<this.population.length; i++){
       let hasSpecie = false
       let j = 0
@@ -41,7 +41,7 @@ class NEAT {
         hasSpecie = this.species[j++].addGenome(this.population[i])
       }
       if(!hasSpecie)
-        this.species.push(new Specie(this.population[i]))
+        this.species.push(new Specie(this.population[i], delta))
     }
   }
 
@@ -52,8 +52,8 @@ class NEAT {
   winter() { 
     for(const specie of this.species){
       specie.specimens.sort((a,b)=>b.fitness-a.fitness)
-      if(specie.specimens.length>2){
-        let newLen = Math.floor(specie.specimens.length*0.7)
+      if(specie.specimens.length>3){
+        let newLen = Math.ceil(specie.specimens.length*0.4)
         specie.specimens.length = newLen
       }
     }
@@ -79,11 +79,11 @@ class NEAT {
   step(fitness, X, Y) {
     if (fitness)
       this.summer(X, Y, fitness)
-    this.autumn()
+    this.autumn(0.5)
     this.winter()
     this.spring()
 
+    this.summer(X, Y, fitness)
     this.population.sort((a, b) => b.fitness - a.fitness)
-    console.log(this.population);
   }
 }
