@@ -5,6 +5,7 @@ class NEAT {
     this.populationSize = populationSize
     this.population = []
     this.species = []
+    this.stepix = 0
     for (let i = 0; i < populationSize; i++)
       this.population.push(new Genome(inN, outN))
   }
@@ -23,7 +24,12 @@ class NEAT {
   */
   summer(X, Y, fitness) {
     this.population.forEach(x => {
-      x.fitness = fitness(x, X, Y)
+      try{
+        x.fitness = fitness(x, X, Y)
+      }
+      catch(e){
+        x.fitness=-1
+      }
     })
   }
 
@@ -32,8 +38,8 @@ class NEAT {
    * en distintos tipos.
    * Separamos a toda nuestra poblaci\'on en distintas especies
    */
-  autumn() {
-    this.species = [new Specie(this.population[0])]
+  autumn(delta) {
+    this.species = [new Specie(this.population[0], delta)]
     for(let i=1; i<this.population.length; i++){
       let hasSpecie = false
       let j = 0
@@ -41,7 +47,7 @@ class NEAT {
         hasSpecie = this.species[j++].addGenome(this.population[i])
       }
       if(!hasSpecie)
-        this.species.push(new Specie(this.population[i]))
+        this.species.push(new Specie(this.population[i], delta))
     }
   }
 
@@ -50,10 +56,14 @@ class NEAT {
    * Es decir eliminaremos a los elementos con peor fitness de cada especie.
    */
   winter() { 
+    let fprom = 0
+    for(const specimen of this.population)
+      fprom += fprom.fitness
+    fprom = fprom / this.population.length
     for(const specie of this.species){
       specie.specimens.sort((a,b)=>b.fitness-a.fitness)
-      if(specie.specimens.length>2){
-        let newLen = Math.floor(specie.specimens.length*0.7)
+      if(specie.specimens.length>1){
+        let newLen = Math.ceil(specie.specimens.length*0.2)
         specie.specimens.length = newLen
       }
     }
@@ -66,24 +76,31 @@ class NEAT {
    * Reproducimos a cada especie y substituimos a nuestra población.
    */
   spring() {
+    function rand(arr) {
+      let i = Math.floor(arr.length*Math.random())
+      return arr[i]
+    }
     this.population = []
     for(const specie of this.species){
       for(let i =0; i<specie.length; i++){
-        let mother =  random(specie.specimens)
-        let father = random(specie.specimens)
+        //Elegir a los mejores candidatos
+        
+        let mother = rand(specie.specimens)
+        let father = rand(specie.specimens)
         this.population.push(Genome.offSpring(mother, father))
       }
     }
   }
 
   step(fitness, X, Y) {
+    this.stepix += 0.01
     if (fitness)
       this.summer(X, Y, fitness)
-    this.autumn()
+    this.autumn(1+this.stepix)
     this.winter()
     this.spring()
 
+    this.summer(X, Y, fitness)
     this.population.sort((a, b) => b.fitness - a.fitness)
-    console.log(this.population);
   }
 }

@@ -47,9 +47,12 @@ function setup(){
   pacman.newLevel(0)
 
   //Neat setup
-  let neat = new NEAT(2,1,30)
-  for(let i=0; i<100; i++)
+  let neat = new NEAT(2,1,50)
+  for(let i=0; i<2000; i++){
     neat.step(fitness, X, Y)
+    console.log(neat.population[0].fitness);
+  }
+  console.log(neat.population[0]);
   console.log(neat.population[0].feedBatch(X))
   console.log(Y); 
 }

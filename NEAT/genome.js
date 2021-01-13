@@ -1,194 +1,182 @@
 const sigmoid = x=>1/(1+Math.exp(x))
 
+function randGaussian(mu, sigma) {
+  const x = Math.random()
+  let left = 1/Math.sqrt(2*Math.PI*(sigma**2))
+  const right = Math.exp((x-mu)**2/(-2*(sigma**2)))
+  return left*right
+}
+
 class Genome {
   constructor(inputs, outputs, bias=true){
+    inputs = inputs +1
     this.fitness = null
-    this.neurons = []
-    this.inputs = []
-    this.hidden = []
-    this.outputs = []
-    this.calculated = []
+    this.inputLen = inputs
+    this.outputLen = outputs
+    this.dGraph = new dGraph()
+    for(let i=0; i<inputs; i++)
+      for(let j=0; j<outputs; j++)
+        this.dGraph.addEdge(i, inputs+j)
 
-    for(let i=0; i<inputs+bias; i++)
-      this._addNeuron(Neuron.Type.input)
-    for(let i=0; i<outputs; i++){
-      let n = this._addNeuron(Neuron.Type.output)
-      for(const inN of this.inputs)
-        this._addConnection(inN, n)
-    }    
   }
-  _addConnection(inN, outN, weight=Math.random()){
-    return outN.addConnection(inN, weight)
-  }
-
-  _addNeuron(type, nN=this.neurons.length, layer){
-    const n = new Neuron(nN, type, layer)
-    this.neurons[n.id] = n
-    if(type == Neuron.Type.input){
-      this.inputs.push(n)
-      n.layer = 0
-    }
-    else if(type == Neuron.Type.hidden){
-      this.hidden.push(n)
-      this.calculated.push(n)
-    }
-    else {
-      this.outputs.push(n)
-      this.calculated.push(n)
-      n.layer = Infinity
-    }
-    return n
-  }
-
-  _feed(nN, neurons){
-    if(neurons[nN] != Infinity)
-      return neurons[nN]
-
-    let acc = 0
-    for(const cCon of this.neurons[nN].connections)
-      acc += this._feed(cCon.inN.id, neurons)*cCon.weight
-    neurons[nN] = sigmoid(acc)
-    return neurons[nN]
+  
+  _feed(neurons, v){
+    if(neurons[v.id]!=Infinity)
+      return neurons[v.id]
+    let sum = 0
+    for(const edge of v.inEdges)
+      sum += this._feed(neurons, edge.outV)*edge.weight
+    neurons[v.id] = sigmoid(sum)
+    return neurons[v.id]
   }
 
   feed(input){
-    const neurons = new Float32Array(this.neurons.length)
-    neurons.fill(Infinity)
-    neurons[0] = 1
-    for(let i=0; i<this.inputs.length-1; i++)
-      neurons[i+1]=input[i]
-    const Y = new Array(this.outputs.length)
-    for(let i=0; i<this.outputs.length; i++){
-      Y[i] = this._feed(this.outputs[i].id, neurons)
+    const neuronsValues = new Float32Array(this.dGraph.vertex.length).fill(Infinity)
+    const orderedVertex = this.dGraph.toposort()
+    input.unshift(1) 
+    if(input.length!=this.inputLen){
+      console.log(input);
+      throw Error("input must be same as size as defined in constructor")
     }
+    for(let i=0; i<this.inputLen; i++)
+      neuronsValues[i] = input[i]
+    for(const vertex of orderedVertex)
+      this._feed(neuronsValues, vertex)
+    let Y = new Float32Array(this.outputLen)
+    for(let i=0; i<this.outputLen; i++)
+      Y[i] = neuronsValues[this.inputLen+i]
     return Y
   }
 
   feedBatch(batch){
     let Y = []
-    for(const input of batch)
+    let newBatch = new Array()
+    for(let i=0; i<batch.length; i++)
+      newBatch[i] = batch[i].slice()
+    for(const input of newBatch)
       Y.push(this.feed(input))
     return Y
   }
 
-  connectionIterator(){
-    let connections = []
-    for(const n of this.neurons)
-      for(const conn of n.connections)
-        connections.push(conn)
-    connections.sort((a, b)=>a.innovn-b.innovN)
-    let i = 0
-    return {
-      next: function(){
-        return i<connections.length? 
-          {value: connections[i++], done: false}:
-          {done: true}
-      },
-      done: function(){
-        return i>=connections.length
-      }
-    }
-  }
 
   mutateWeights(radioactivity){
-    const it = this.connectionIterator()
-    while(!it.done())
-      if(Math.random()<radioactivity)
-        it.next().value.weight += randomGaussian(0, 0.25)
-      else 
-        it.next()
+    const orderedVertex = this.dGraph.toposort()
+    for(const vertex of orderedVertex){
+      for(const edge of vertex.outEdges)
+        if(Math.random()<radioactivity)
+          edge.weight += randGaussian(0, 0.25) -1
+    }
   }
 
   mutateConnections(radioactivity){
-    const it = this.connectionIterator()
-    while(!it.done())
+    const orderedVertex = this.dGraph.toposort()
+    const edges = []
+    for(const vertex of orderedVertex)
+      for(const edge of vertex.outEdges)
+        edges.push(edge)
+    for(const edge of edges)
       if(Math.random()<radioactivity){
-        const originalConn =  it.next().value
-        const n = this._addNeuron(Neuron.Type.hidden)
-        n.layer = originalConn.inN.layer + 1
-        if(originalConn.outN.type == Neuron.Type.hidden)
-          originalConn.outN.layer = n.layer+1
-        this._addConnection(originalConn.inN, n, 1)
-        originalConn.inN = n
+        this.dGraph.deleteEdge(edge)
+        const v = this.dGraph.createVertex()
+        this.dGraph.addEdge(edge.outV.id, v.id, 1)
+        this.dGraph.addEdge(v.id, edge.inV.id, edge.weight)
       }
-      else 
-        it.next()
+
   }
 
   mutateNewConnections(radioactivity){
-    for(const n of this.neurons){
-      if(n.type == Neuron.Type.input || Math.random()>radioactivity)
-        continue
-      const alreadyConnected = new Set()
-      n.connections.forEach(x=>alreadyConnected.add(x.inN.id))
-      const posibleInputs = this.neurons.filter(x=>{
-        return x.layer < n.layer
-      }).filter(x =>{
-        return !alreadyConnected.has(x.id)
-      })
-      if(Math.random()<radioactivity && posibleInputs.length>0){
-        this._addConnection(random(posibleInputs), n)
+    const orderedVertex = this.dGraph.toposort()
+    for(let i=0; i<orderedVertex.length; i++)
+      if(Math.random()<radioactivity){
+        const existentes = new Set(orderedVertex[i].outEdges.map(x=>x.inV.id))
+        for(let j=0; j<this.inputLen; j++)
+          existentes.add(j)
+        let posibleConnections = orderedVertex.slice(i+1)
+          .filter(x=>!existentes.has(x.id)) 
+        if(posibleConnections.length>0){
+          let j = Math.floor(posibleConnections.length*Math.random())
+          let connectionV =  posibleConnections[j]        
+          this.dGraph.addEdge(orderedVertex[i].id, connectionV.id)
+        }
       }
-    }
+  }
 
+  connections() {
+    const edges = []
+    for(const vertex of this.dGraph.toposort())
+      for(const edge of vertex.outEdges)
+        edges.push(edge)
+    edges.sort((a,b)=>a.innovN-b.innovN)
+    return edges
   }
 
   static unmutedChild(mother, father){
-    const child = new Genome(0, 0, false)
-    const motherIt = mother.connectionIterator()
-    const fatherIt = father.connectionIterator()
-    const addedNeurons = {}
-
-    function addNeuron(n){
-      if(!(n.id in addedNeurons))
-        addedNeurons[n.id]  = child._addNeuron(n.type, n.id, n.layer)
-      return addedNeurons[n.id]
-    }
-
-    function addConnection(conn){      
-      child._addConnection(addNeuron(conn.inN), addNeuron(conn.outN), conn.weight)
-    }
-
-    let mConn = motherIt.next()
-    let fConn = fatherIt.next()
-    while(!mConn.done && !fConn.done){
-      if(mConn.value.innovN == fConn.value.innovN){
-        if(Math.random>0.5){
-          addConnection(mConn.value)
-        }
-        else {
-          addConnection(fConn.value)
-        }
-        mConn = motherIt.next()
-        fConn = fatherIt.next()
+    function checkOrder(sort, a, b) {
+      let aix = -1
+      let bix = -1
+      for(let i=0; i<sort.length; i++){
+        if(sort[i].id==a)
+          aix = i
+        if(sort[i].id==b)
+          bix = i
       }
-      else if(mConn.value.innovN<fConn.value.innovN){
-        addConnection(mConn.value)
-        mConn = motherIt.next()
+      return aix<bix
+    }
+    let child = new Genome(mother.inputLen-1, mother.outputLen)
+    child.dGraph = new dGraph()
+    let mEdges = mother.connections()
+    let fEdges = father.connections()
+    let mVertex = mother.dGraph.toposort()
+    let fVertex = mother.dGraph.toposort()
+    let toposort;
+    if(mVertex>fVertex)
+      toposort = mVertex
+    else  
+      toposort = fVertex
+    
+    let mix = 0
+    let fix = 0
+    while(mix<mEdges.length && fix<fEdges.length){
+      if(mEdges[mix].innovN==fEdges[fix].innovN){
+        let edge = Math.random()>0.5? mEdges[mix]: fEdges[fix]
+        if(checkOrder(toposort, edge.outV.id, edge.inV.id))
+          child.dGraph.addEdge(edge.outV.id, edge.inV.id, edge.weight)
+        mix++
+        fix++
+      }
+      else if(mEdges[mix].innovN<fEdges[fix].innovN){
+        let edge = mEdges[mix]
+        if(checkOrder(toposort, edge.outV.id, edge.inV.id))
+          child.dGraph.addEdge(edge.outV.id, edge.inV.id, edge.weight)
+        mix++
       }
       else {
-        addConnection(fConn.value)
-        fConn = fatherIt.next()
+        let edge = fEdges[fix]
+        if(checkOrder(toposort, edge.outV.id, edge.inV.id))
+          child.dGraph.addEdge(edge.outV.id, edge.inV.id, edge.weight)
+        fix++
       }
     }
-    while(!mConn.done){
-      addConnection(mConn.value)
-      mConn = motherIt.next()
+    while(mix<mEdges.length){
+      let edge = mEdges[mix]
+      if(checkOrder(toposort, edge.outV.id, edge.inV.id))
+        child.dGraph.addEdge(edge.outV.id, edge.inV.id, edge.weight)
+      mix++
     }
-    while(!fConn.done){
-      addConnection(fConn.value)
-      fConn = fatherIt.next()
-    }
-
-    return child
+    while(fix<fEdges.length){
+      let edge = fEdges[fix]
+      if(checkOrder(toposort, edge.outV.id, edge.inV.id))
+        child.dGraph.addEdge(edge.outV.id, edge.inV.id, edge.weight)
+      fix++
+    }    
+    return child    
   }
 
   static offSpring(mother, father){
-    const child = Genome.unmutedChild(mother, father)
-    child.mutateWeights(0.5)
-    child.mutateConnections(0.4)
-    child.mutateNewConnections(0.5)
+    let child = Genome.unmutedChild(mother, father)
+    child.mutateWeights(0.01)
+    child.mutateNewConnections(0.00001)
+    child.mutateConnections(0.0001)
     return child
   }
 }
-
