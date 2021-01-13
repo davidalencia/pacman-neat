@@ -5,6 +5,7 @@ class NEAT {
     this.populationSize = populationSize
     this.population = []
     this.species = []
+    this.stepix = 0
     for (let i = 0; i < populationSize; i++)
       this.population.push(new Genome(inN, outN))
   }
@@ -23,7 +24,12 @@ class NEAT {
   */
   summer(X, Y, fitness) {
     this.population.forEach(x => {
-      x.fitness = fitness(x, X, Y)
+      try{
+        x.fitness = fitness(x, X, Y)
+      }
+      catch(e){
+        x.fitness=-1
+      }
     })
   }
 
@@ -50,10 +56,14 @@ class NEAT {
    * Es decir eliminaremos a los elementos con peor fitness de cada especie.
    */
   winter() { 
+    let fprom = 0
+    for(const specimen of this.population)
+      fprom += fprom.fitness
+    fprom = fprom / this.population.length
     for(const specie of this.species){
       specie.specimens.sort((a,b)=>b.fitness-a.fitness)
-      if(specie.specimens.length>3){
-        let newLen = Math.ceil(specie.specimens.length*0.4)
+      if(specie.specimens.length>1){
+        let newLen = Math.ceil(specie.specimens.length*0.2)
         specie.specimens.length = newLen
       }
     }
@@ -66,20 +76,27 @@ class NEAT {
    * Reproducimos a cada especie y substituimos a nuestra población.
    */
   spring() {
+    function rand(arr) {
+      let i = Math.floor(arr.length*Math.random())
+      return arr[i]
+    }
     this.population = []
     for(const specie of this.species){
       for(let i =0; i<specie.length; i++){
-        let mother =  random(specie.specimens)
-        let father = random(specie.specimens)
+        //Elegir a los mejores candidatos
+        
+        let mother = rand(specie.specimens)
+        let father = rand(specie.specimens)
         this.population.push(Genome.offSpring(mother, father))
       }
     }
   }
 
   step(fitness, X, Y) {
+    this.stepix += 0.01
     if (fitness)
       this.summer(X, Y, fitness)
-    this.autumn(0.5)
+    this.autumn(1+this.stepix)
     this.winter()
     this.spring()
 

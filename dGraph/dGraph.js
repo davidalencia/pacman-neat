@@ -107,11 +107,13 @@ class dGraph {
   toposort(){
     if(this.ordered)
       return this.ordered
+    this.vertex = this.vertex.filter(x=>x)
     const dfs = (at, V, visitedNodes) => {
       V[at] = true
-      for(const edge of this.vertex[at].inEdges)
-        if(!V[edge.outV.id])
-          dfs(edge.outV.id, V, visitedNodes)
+      if(this.vertex[at])
+        for(const edge of this.vertex[at].inEdges)
+          if(!V[edge.outV.id])
+            dfs(edge.outV.id, V, visitedNodes)
       visitedNodes.push(at)
     }
 
@@ -129,7 +131,7 @@ class dGraph {
         }
       }
     } 
-    this.ordered = ordering.reverse().map(x=>this.vertex[x])
+    this.ordered = ordering.reverse().map(x=>this.vertex[x]).filter(x=>x)
     return this.ordered
   }
 

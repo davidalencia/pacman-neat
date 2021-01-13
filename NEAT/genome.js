@@ -174,9 +174,9 @@ class Genome {
 
   static offSpring(mother, father){
     let child = Genome.unmutedChild(mother, father)
-    child.mutateWeights(0.2)
-    child.mutateNewConnections(0.05)
-    child.mutateConnections(0.01)
+    child.mutateWeights(0.1)
+    child.mutateNewConnections(0.0001)
+    child.mutateConnections(0.001)
     return child
   }
 }
