@@ -48,7 +48,7 @@ function setup(){
 
   //Neat setup
   let neat = new NEAT(2,1,50)
-  for(let i=0; i<800; i++){
+  for(let i=0; i<2000; i++){
     neat.step(fitness, X, Y)
     console.log(neat.population[0].fitness);
   }
