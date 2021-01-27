@@ -1,3 +1,15 @@
+function rand(arr) {
+  let i = Math.floor(arr.length*Math.random())
+  return arr[i]
+}
+
+function randGaussian(mu, sigma) {
+    const x = Math.random()
+    let left = 1/Math.sqrt(2*Math.PI*(sigma**2))
+    const right = Math.exp((x-mu)**2/(-2*(sigma**2)))
+    return left*right
+}
+
 /**
  * Almacena y compara especimenes para formar una especie
  */
@@ -38,11 +50,11 @@ class Specie {
      * @param {Genome} genome El especimen que sera verificado.
      * @returns {Boolean} Regresa si esta o no en la especie.
      */
-    is(genome, c1=2, c2=2, c3=1){
+    is(genome, c1=100, c2=100, c3=0.5){
         let E = 0,
             D = 0,
             W = 0;
-        let specimen = random(this.specimens)
+        let specimen = rand(this.specimens)
         let sConnections = specimen.connections()
         let gConnections = genome.connections()
         let six = 0
@@ -77,3 +89,5 @@ class Specie {
         return distance<this.delta
     }
 }
+
+module.exports = Specie

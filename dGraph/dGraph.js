@@ -146,3 +146,6 @@ class dGraph {
   }
 
 }
+
+
+module.exports = dGraph

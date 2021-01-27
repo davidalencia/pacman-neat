@@ -1,11 +1,6 @@
+const {randGaussian} = require('../utils/rand')
+const dGraph = require('../dGraph/dGraph')
 const sigmoid = x=>1/(1+Math.exp(x))
-
-function randGaussian(mu, sigma) {
-  const x = Math.random()
-  let left = 1/Math.sqrt(2*Math.PI*(sigma**2))
-  const right = Math.exp((x-mu)**2/(-2*(sigma**2)))
-  return left*right
-}
 
 class Genome {
   constructor(inputs, outputs, bias=true){
@@ -19,46 +14,6 @@ class Genome {
         this.dGraph.addEdge(i, inputs+j)
 
   }
-  
-  _feed(neurons, v){
-    if(neurons[v.id]!=Infinity)
-      return neurons[v.id]
-    let sum = 0
-    for(const edge of v.inEdges)
-      sum += this._feed(neurons, edge.outV)*edge.weight
-    neurons[v.id] = sigmoid(sum)
-    return neurons[v.id]
-  }
-
-  feed(input){
-    const neuronsValues = new Float32Array(this.dGraph.vertex.length).fill(Infinity)
-    const orderedVertex = this.dGraph.toposort()
-    input.unshift(1) 
-    if(input.length!=this.inputLen){
-      console.log(input);
-      throw Error("input must be same as size as defined in constructor")
-    }
-    for(let i=0; i<this.inputLen; i++)
-      neuronsValues[i] = input[i]
-    for(const vertex of orderedVertex)
-      this._feed(neuronsValues, vertex)
-    let Y = new Float32Array(this.outputLen)
-    for(let i=0; i<this.outputLen; i++)
-      Y[i] = neuronsValues[this.inputLen+i]
-    return Y
-  }
-
-  feedBatch(batch){
-    let Y = []
-    let newBatch = new Array()
-    for(let i=0; i<batch.length; i++)
-      newBatch[i] = batch[i].slice()
-    for(const input of newBatch)
-      Y.push(this.feed(input))
-    return Y
-  }
-
-
   mutateWeights(radioactivity){
     const orderedVertex = this.dGraph.toposort()
     for(const vertex of orderedVertex){
@@ -108,6 +63,44 @@ class Genome {
         edges.push(edge)
     edges.sort((a,b)=>a.innovN-b.innovN)
     return edges
+  }
+
+
+  _feed(neurons, v){
+    if(neurons[v.id]!=Infinity)
+      return neurons[v.id]
+    let sum = 0
+    for(const edge of v.inEdges)
+      sum += this._feed(neurons, edge.outV)*edge.weight
+    neurons[v.id] = sigmoid(sum)
+    return neurons[v.id]
+  }
+
+  feed(input){
+    const neuronsValues = new Float32Array(this.dGraph.vertex.length).fill(Infinity)
+    const orderedVertex = this.dGraph.toposort()
+    input = [1, ...input]
+    if(input.length!=this.inputLen){
+      throw Error("input must be same as size as defined in constructor")
+    }
+    for(let i=0; i<this.inputLen; i++)
+      neuronsValues[i] = input[i]
+    for(const vertex of orderedVertex)
+      this._feed(neuronsValues, vertex)
+    let Y = new Float32Array(this.outputLen)
+    for(let i=0; i<this.outputLen; i++)
+      Y[i] = neuronsValues[this.inputLen+i]
+    return Y
+  }
+
+  feedBatch(batch){
+    let Y = []
+    let newBatch = new Array()
+    for(let i=0; i<batch.length; i++)
+      newBatch[i] = batch[i].slice()
+    for(const input of newBatch)
+      Y.push(this.feed(input))
+    return Y
   }
 
   static unmutedChild(mother, father){
@@ -172,11 +165,13 @@ class Genome {
     return child    
   }
 
-  static offSpring(mother, father){
+  static offSpring(mother, father, alpha=0.005){
     let child = Genome.unmutedChild(mother, father)
-    child.mutateWeights(0.01)
-    child.mutateNewConnections(0.00001)
-    child.mutateConnections(0.0001)
+    child.mutateWeights(alpha)
+    child.mutateNewConnections(0.0001*alpha)
+    child.mutateConnections(0.001*alpha)
     return child
   }
 }
+
+module.exports = Genome

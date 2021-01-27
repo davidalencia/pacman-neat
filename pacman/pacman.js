@@ -41,8 +41,11 @@ mapa = [
 ]
 
 class Pacman {
-  constructor(tileset){
-    background(0);
+  constructor(tileset, sketch){
+    if(sketch)
+      sketch.background(0);
+    this.mapa = mapa.map(x=>x.slice())
+    this.sketch = sketch
     this.x = 13
     this.y = 26
     this.tileset = tileset
@@ -61,22 +64,22 @@ class Pacman {
   
   _drawTile(dx, dy, i){
     let {x, y} =  this._indexTiles(i)
-    image(this.tileset, dx, dy, tileSize, tileSize, x, y, tileSize, tileSize);
+    this.sketch.image(this.tileset, dx, dy, tileSize, tileSize, x, y, tileSize, tileSize);
   }
   
   drawMaze(){
-    for (let alfa = 0; alfa<mapa.length; alfa++)
-      for (let beta = 0; beta<mapa[alfa].length; beta++)
-        if(mapa[alfa][beta]>0)
-          this._drawTile(beta*tileSize, alfa*tileSize, mapa[alfa][beta]+213)
+    for (let alfa = 0; alfa<this.mapa.length; alfa++)
+      for (let beta = 0; beta<this.mapa[alfa].length; beta++)
+        if(this.mapa[alfa][beta]>0)
+          this._drawTile(beta*tileSize, alfa*tileSize, this.mapa[alfa][beta]+213)
   }
   
   drawPoints(){
-    for (let alfa = 0; alfa<mapa.length; alfa++)
-      for (let beta = 0; beta<mapa[alfa].length; beta++)
-        if(mapa[alfa][beta]==0)
+    for (let alfa = 0; alfa<this.mapa.length; alfa++)
+      for (let beta = 0; beta<this.mapa[alfa].length; beta++)
+        if(this.mapa[alfa][beta]==0)
           this._drawTile(beta*tileSize, alfa*tileSize, 16)
-        else if(mapa[alfa][beta]==-1)
+        else if(this.mapa[alfa][beta]==-1)
           this._drawTile(beta*tileSize, alfa*tileSize, 300)
           
   }
@@ -98,7 +101,7 @@ class Pacman {
         pac = {x:26, y:270}
       else
         pac = {x:4, y:270}
-    image(this.tileset, 
+    this.sketch.image(this.tileset, 
           this.x*tileSize, //dx
           this.y*tileSize, //dy
           tileSize*1.6, 
@@ -110,14 +113,14 @@ class Pacman {
   }
   
   valid(x, y){
-      return mapa[y][x]<1
+      return this.mapa[y][x]<1
   }
   
   setDirection(dir){
-    const R = (dir == 'R' && this.valid(this.x+1, this.y))
-    const D = (dir == 'D' && this.valid(this.x, this.y+1))
-    const U = (dir == 'U' && this.valid(this.x, this.y-1))
-    const L = (dir == 'L' && this.valid(this.x-1, this.y))
+    const R = (dir == 'R' && this.valid(this.x+1, this.y) && this.direction != 'L')
+    const D = (dir == 'D' && this.valid(this.x, this.y+1) && this.direction != 'U')
+    const U = (dir == 'U' && this.valid(this.x, this.y-1) && this.direction != 'D')
+    const L = (dir == 'L' && this.valid(this.x-1, this.y) && this.direction != 'R')
     if(R || D || U || L)
       this.direction = dir
   }
@@ -137,8 +140,8 @@ class Pacman {
         this.x=25
       else
         this.x--
-    if(mapa[this.y][this.x]==0){
-      mapa[this.y][this.x]=-1
+    if(this.mapa[this.y][this.x]==0){
+      this.mapa[this.y][this.x]=-1
       this.score++
     }
   }
@@ -151,8 +154,15 @@ class Pacman {
   
   draw(){
     this.update()
-    this.drawMaze()
-    this.drawPoints()
-    this.drawPacman()
+    if(this.sketch){
+      this.drawMaze()
+      this.drawPoints()
+      this.drawPacman()
+      this.sketch.fill(255, 255, 252, 255);
+      this.sketch.text(`score: ${this.score}`, 10, 20);
+    }
+    
   }
 }
+
+module.exports = Pacman

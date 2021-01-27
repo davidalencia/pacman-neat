@@ -1,5 +1,10 @@
+const {rand} = require('../utils/rand')
+const Genome = require('./genome')
+const Specie = require('./specie')
+
 class NEAT {
-  constructor(inN, outN, populationSize) {
+  constructor(inN, outN, populationSize, alpha=0.01) {
+    this.alpha = alpha
     this.inN = inN
     this.outN = outN
     this.populationSize = populationSize
@@ -76,10 +81,6 @@ class NEAT {
    * Reproducimos a cada especie y substituimos a nuestra población.
    */
   spring() {
-    function rand(arr) {
-      let i = Math.floor(arr.length*Math.random())
-      return arr[i]
-    }
     this.population = []
     for(const specie of this.species){
       for(let i =0; i<specie.length; i++){
@@ -87,20 +88,24 @@ class NEAT {
         
         let mother = rand(specie.specimens)
         let father = rand(specie.specimens)
-        this.population.push(Genome.offSpring(mother, father))
+        this.population.push(Genome.offSpring(mother, father, this.alpha))
       }
     }
   }
 
   step(fitness, X, Y) {
     this.stepix += 0.01
-    if (fitness)
+    if(fitness)
       this.summer(X, Y, fitness)
-    this.autumn(1+this.stepix)
+    this.autumn(0.2)
     this.winter()
     this.spring()
 
-    this.summer(X, Y, fitness)
+    if(fitness)
+      this.summer(X, Y, fitness)
     this.population.sort((a, b) => b.fitness - a.fitness)
   }
 }
+
+
+module.exports = NEAT
