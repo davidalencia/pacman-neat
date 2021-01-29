@@ -2,6 +2,8 @@ const NEAT = require('./NEAT/NEAT')
 const Pacman = require('./pacman/pacman')
 const fs = require('fs')
 
+const delta = 8
+
 function Genome2JSONable(genome){
   let edges = genome.dGraph.edges.map(edge =>{
     return {
@@ -26,24 +28,35 @@ function Object2Genome(obj){
   return obj
 }
 
-function normalizePacman(mapa){
-  const input =  new Float32Array(868*4)
-  mapa.slice(3).flat().forEach((x, j)=>{
-    let i;
-    if(x==0)
-      i=0
-    else if(x==-1)
-      i=1
-    else
-      i=2
-    input[i+j*4]=1
-  })
+function normalizePacman(pacman){
+  const input =  new Float32Array((delta*2+1)**2-1)
+  let salto = 0
+  for(let i=-delta;i<=delta;i++)
+    for(let j=-delta;j<=delta; j++){
+      let val = Infinity
+      if(i==0&&j==0){
+        salto = -1
+        continue
+      }
+      let ix = (j+delta)*11+i+delta+salto 
+      let y = pacman.y+j
+      let x = pacman.x+i
+      if(y<3||x<0||y>=33||x>=28)
+        val = -1
+      else if(pacman.mapa[y][x] == -1)
+        val = 0
+      else if(pacman.mapa[y][x] == 0)
+        val = 1
+      else 
+        val = -1
+      input[ix]=val
+    }
   return input
 }
 
 
 function getNewDirection(genome, pacman){
-  let input = normalizePacman(pacman.mapa)
+  let input = normalizePacman(pacman)
   let i = (pacman.y-3)*28+pacman.x
   input[i] = 1
   let output = genome.feed(input)
@@ -57,19 +70,28 @@ pacmanFitness = genome => {
   let pacman = new Pacman()
   let pScore = pacman.score
   let scoreC = 0
-  while(scoreC<3){
+  let stay = 0
+  let lastPos = {x: pacman.x, y: pacman.y}
+  while(scoreC<20 && stay<3){
+    if(pacman.score>244)
+      return Infinity
     pacman.setDirection(getNewDirection(genome, pacman))
     pacman.move()
     if(pScore==pacman.score)
       scoreC++
     else
       scoreC = 0
+    
+    if(lastPos.x==pacman.x && lastPos.y==pacman.y)
+      stay++
+    else
+      stay = 0
     pScore = pacman.score
   }
   return pacman.score
 }
 
-let pacmanNEAT = new NEAT(868*4, 4, 50)
+let pacmanNEAT = new NEAT((delta*2+1)**2-1, 4, 200, 0.01)
 let bestPlayer = {player: pacmanNEAT.population[0], generation: 0}
 const epochsPacman = 1000000
 for(let i=0; i<epochsPacman; i++){
@@ -90,7 +112,7 @@ for(let i=0; i<epochsPacman; i++){
         console.log(e);
       }
     }
-    console.log(`generation: ${bestPlayer.generation}: ${bestPlayer.player.fitness}. ${pacmanNEAT.species.length} especies`);
+    console.log(`generation: ${bestPlayer.generation}: Points: ${bestPlayer.player.fitness}. Especies: ${pacmanNEAT.species.length}.`);
   }
   pacmanNEAT.step()
 }

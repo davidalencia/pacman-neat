@@ -1,0 +1,14 @@
+{
+  "name": "@davidalencia/playing-pacman-with-neat",
+  "main": "eaf8b0979e44d11a@789.js",
+  "version": "789.0.0",
+  "homepage": "https://observablehq.com/@davidalencia/playing-pacman-with-neat",
+  "author": {
+    "name": "davidalencia",
+    "url": "https://observablehq.com/@davidalencia"
+  },
+  "type": "module",
+  "peerDependencies": {
+    "@observablehq/runtime": "4"
+  }
+}

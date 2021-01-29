@@ -94,10 +94,10 @@ class NEAT {
   }
 
   step(fitness, X, Y) {
-    this.stepix += 0.01
+    this.stepix += 0.00001
     if(fitness)
       this.summer(X, Y, fitness)
-    this.autumn(0.2)
+    this.autumn(0.9)
     this.winter()
     this.spring()
 
